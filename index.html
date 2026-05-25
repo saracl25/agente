@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Price Monitor Agent — Documentación Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #06080f;
+    --surface: #0d1220;
+    --surface2: #131929;
+    --border: rgba(100,180,255,0.10);
+    --accent: #3d9eff;
+    --accent2: #00e5c3;
+    --accent3: #ff6b35;
+    --warn: #ffbe3d;
+    --text: #c8d8f0;
+    --muted: #5a7298;
+    --code-bg: #080c17;
+    --glow: rgba(61,158,255,0.15);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Grid noise overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(100,180,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100,180,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Navigation */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    backdrop-filter: blur(20px);
+    background: rgba(6,8,15,0.85);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; height: 60px;
+    gap: 2rem;
+  }
+  .nav-logo {
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.15em;
+    color: var(--accent); text-transform: uppercase;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .nav-logo .dot { width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent2); animation: pulse 2s ease-in-out infinite; }
+  .nav-links { display: flex; gap: 1.5rem; margin-left: auto; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none; font-size: 0.82rem;
+    letter-spacing: 0.05em; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* Layout */
+  .page { position: relative; z-index: 1; }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center; padding: 6rem 2rem 4rem;
+    position: relative;
+  }
+  .hero-glow {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(61,158,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(61,158,255,0.08); border: 1px solid rgba(61,158,255,0.2);
+    color: var(--accent); padding: 0.35rem 1rem; border-radius: 999px;
+    font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.6s ease both;
+  }
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 800;
+    line-height: 1.1; letter-spacing: -0.02em;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub {
+    font-size: 1.1rem; color: var(--muted); margin-top: 1.5rem;
+    max-width: 560px; animation: fadeUp 0.6s 0.2s ease both;
+  }
+  .hero-tags {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 0.75rem; margin-top: 2.5rem;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+  .tag {
+    padding: 0.3rem 0.9rem; border-radius: 6px; font-size: 0.78rem;
+    font-family: 'DM Mono', monospace; letter-spacing: 0.05em;
+    border: 1px solid;
+  }
+  .tag-blue { background: rgba(61,158,255,0.07); border-color: rgba(61,158,255,0.25); color: var(--accent); }
+  .tag-green { background: rgba(0,229,195,0.07); border-color: rgba(0,229,195,0.25); color: var(--accent2); }
+  .tag-orange { background: rgba(255,107,53,0.07); border-color: rgba(255,107,53,0.25); color: var(--accent3); }
+  .tag-yellow { background: rgba(255,190,61,0.07); border-color: rgba(255,190,61,0.25); color: var(--warn); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Sections */
+  section { padding: 6rem 2rem; max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: 0.75rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .section-title {
+    font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 700;
+    letter-spacing: -0.02em; margin-bottom: 3rem; line-height: 1.2;
+  }
+  .section-title span { color: var(--accent2); }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2rem;
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+  }
+  .card:hover {
+    border-color: rgba(61,158,255,0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(61,158,255,0.1);
+  }
+
+  /* Pipeline grid */
+  .pipeline {
+    display: flex; align-items: stretch; gap: 0;
+    overflow-x: auto; padding-bottom: 1rem;
+  }
+  .pipe-step {
+    flex: 1; min-width: 160px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 0; padding: 1.5rem 1.2rem;
+    position: relative; text-align: center;
+    transition: background 0.3s;
+  }
+  .pipe-step:first-child { border-radius: 14px 0 0 14px; }
+  .pipe-step:last-child { border-radius: 0 14px 14px 0; }
+  .pipe-step:hover { background: var(--surface2); }
+  .pipe-step.active { border-color: var(--accent2); background: rgba(0,229,195,0.05); }
+  .pipe-step::after {
+    content: '→';
+    position: absolute; right: -14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent); font-size: 1.1rem; z-index: 2;
+  }
+  .pipe-step:last-child::after { display: none; }
+  .pipe-icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
+  .pipe-name {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text);
+  }
+  .pipe-detail {
+    font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2.5rem; overflow-x: auto;
+  }
+  .arch-diagram pre {
+    font-family: 'DM Mono', monospace; font-size: 0.82rem;
+    color: var(--text); line-height: 1.8; white-space: pre;
+  }
+  .arch-diagram .hl-blue { color: var(--accent); }
+  .arch-diagram .hl-green { color: var(--accent2); }
+  .arch-diagram .hl-orange { color: var(--accent3); }
+
+  /* Quality cards */
+  .quality-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+  .quality-card { position: relative; overflow: hidden; }
+  .quality-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 16px 16px 0 0;
+  }
+  .q-perf::before { background: var(--accent); }
+  .q-sec::before { background: var(--accent2); }
+  .q-maint::before { background: var(--accent3); }
+  .quality-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .quality-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .quality-card ul { list-style: none; }
+  .quality-card li {
+    font-size: 0.85rem; color: var(--muted); padding: 0.3rem 0;
+    padding-left: 1.2rem; position: relative;
+  }
+  .quality-card li::before {
+    content: '›'; position: absolute; left: 0;
+    color: var(--accent); font-weight: 700;
+  }
+
+  /* File tree */
+  .file-tree {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2rem;
+    font-family: 'DM Mono', monospace; font-size: 0.82rem;
+    line-height: 2;
+  }
+  .ft-dir { color: var(--accent); font-weight: 500; }
+  .ft-py { color: var(--accent2); }
+  .ft-yml { color: var(--warn); }
+  .ft-cfg { color: var(--accent3); }
+  .ft-md { color: var(--muted); }
+  .ft-comment { color: #2a3a55; }
+
+  /* Code blocks */
+  .code-block {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem;
+  }
+  .code-header {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.2rem; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .code-dot:nth-child(1) { background: #ff5f57; }
+  .code-dot:nth-child(2) { background: #febc2e; }
+  .code-dot:nth-child(3) { background: #28c840; }
+  .code-filename { margin-left: 0.5rem; font-family: 'DM Mono', monospace;
+    font-size: 0.75rem; color: var(--muted); }
+  .code-block pre {
+    padding: 1.5rem; font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    line-height: 1.8; overflow-x: auto; color: var(--text);
+  }
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .st { color: var(--accent2); }
+  .cm { color: #3d5475; font-style: italic; }
+  .nu { color: var(--warn); }
+  .cl { color: var(--warn); font-weight: 600; }
+  .dc { color: #ff6b35; }
+
+  /* Two col grid */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border); padding: 3rem 2rem;
+    text-align: center; color: var(--muted); font-size: 0.82rem;
+    position: relative; z-index: 1;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 99px; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .flow-row { display: flex; align-items: center; gap: 0; }
+  .flow-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.9rem 1.4rem;
+    font-size: 0.82rem; font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+  }
+  .flow-box.entry { border-color: var(--accent); color: var(--accent); }
+  .flow-box.logic { border-color: var(--accent2); color: var(--accent2); }
+  .flow-box.out { border-color: var(--accent3); color: var(--accent3); }
+  .flow-arrow { color: var(--muted); font-size: 1.2rem; padding: 0 0.75rem; }
+  
+  /* Secrets table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  th {
+    text-align: left; padding: 0.75rem 1rem;
+    background: rgba(61,158,255,0.06); color: var(--accent);
+    font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+  }
+  td { padding: 0.7rem 1rem; border-bottom: 1px solid rgba(100,180,255,0.05); color: var(--muted); }
+  td:first-child { font-family: 'DM Mono', monospace; color: var(--accent2); font-size: 0.8rem; }
+  td:last-child { text-align: center; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .divider { height: 1px; background: var(--border); max-width: 1100px; margin: 0 auto; }
+
+  /* Interactive Elements Playground Styling */
+  .agent-playground {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 768px) { .agent-playground { grid-template-columns: 1fr; } }
+  
+  .input-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .input-group label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+  }
+  .input-group input {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 0.6rem;
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .btn-primary {
+    background: rgba(61,158,255,0.15);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-primary:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .terminal-output {
+    background: #04060a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    height: 250px;
+    overflow-y: auto;
+    color: #a4b7d3;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+  }
+  .term-success { color: var(--accent2); }
+  .term-warn { color: var(--warn); }
+  .term-danger { color: var(--accent3); }
+  .term-info { color: var(--accent); }
+
+  .status-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    display: inline-block;
+  }
+  .badge-success { background: rgba(0,229,195,0.15); color: var(--accent2); }
+  .badge-fail { background: rgba(255,107,53,0.15); color: var(--accent3); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <div class="nav-logo">
+    <span class="dot"></span>
+    Price Monitor Agent
+  </div>
+  <div class="nav-links">
+    <a href="#agente">Agente</a>
+    <a href="#arquitectura">Arquitectura</a>
+    <a href="#calidad">Calidad</a>
+    <a href="#codigo">Código</a>
+    <a href="#pipeline">CI/CD</a>
+    <a href="#despliegue">Staging</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-badge">🤖 Agente Autónomo v1.0</div>
+  <h1>Price Monitor<br><span>Agent</span></h1>
+  <p class="hero-sub">Agente de software autónomo para monitoreo de precios en tiempo real con alertas automáticas, arquitectura segura y pipeline CI/CD completo.</p>
+  <div class="hero-tags">
+    <span class="tag tag-blue">Python 3.11</span>
+    <span class="tag tag-green">LangChain Ready</span>
+    <span class="tag tag-orange">GitHub Actions</span>
+    <span class="tag tag-yellow">Snyk Security</span>
+    <span class="tag tag-blue">Docker</span>
+    <span class="tag tag-green">Pytest ≥80%</span>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<section id="agente">
+  <div class="section-label">01 — Definición & Consola de Control</div>
+  <h2 class="section-title">¿Qué hace el <span>agente</span>?</h2>
+
+  <div style="overflow-x:auto; margin-bottom: 3rem;">
+    <div class="flow">
+      <div class="flow-row">
+        <div class="flow-box entry" id="flow-entry">📥 ENTRADA<br><small style="color:var(--muted)">product_ids[]<br>target_price<br>alert_email</small></div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-box logic" id="flow-logic">⚙️ LÓGICA<br><small style="color:var(--muted)">sanitize() →<br>GET /prices/{id} →<br>compare threshold</small></div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-box logic" id="flow-api">🌐 API EXTERNA<br><small style="color:var(--muted)">pricemonitor.api<br>/v1/prices/{id}<br>Bearer token</small></div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-box out" id="flow-out">📤 SALIDA<br><small style="color:var(--muted)">PriceRecord[]<br>Email alert<br>if price ≤ target</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 2rem;">
+    <div class="section-label">Panel de Control Simulado</div>
+    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Prueba la lógica exacta del agente en tiempo real. Configura los parámetros de rastreo y observa el ciclo autónomo ejecutarse.</p>
+    
+    <div class="agent-playground">
+      <div class="input-panel">
+        <div class="input-group">
+          <label>ID de Producto (Sanitizado con Regex)</label>
+          <input type="text" id="prod-id" value="PROD-9982X" placeholder="Ej: PROD-1234A">
+        </div>
+        <div class="two-col" style="gap: 1rem;">
+          <div class="input-group">
+            <label>Precio Objetivo ($)</label>
+            <input type="number" id="prod-target" value="150">
+          </div>
+          <div class="input-group">
+            <label>Email de Alerta</label>
+            <input type="email" id="prod-email" value="dev@company.com">
+          </div>
+        </div>
+        <button class="btn-primary" id="run-agent-btn">Ejecutar Ciclo de Monitoreo</button>
+      </div>
+      <div>
+        <div class="terminal-output" id="terminal-logs">
+          <span class="term-info">[INFO]</span> Agente inicializado listo en memoria.<br>
+          <span class="term-info">[INFO]</span> Esperando orden de ejecución...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="section-label">API Externa Integrada</div>
+      <p style="font-family:'DM Mono',monospace; font-size:0.85rem; color: var(--accent2); margin-bottom:1rem;">
+        GET /v1/prices/{product_id}
+      </p>
+      <p style="color:var(--muted); font-size:0.87rem;">Retorna <code style="color:var(--warn); background:var(--code-bg); padding:2px 6px; border-radius:4px;">{ price, currency, name }</code> con reintentos automáticos 3x y backoff exponencial de 0.5s. Autenticación via Bearer token.</p>
+    </div>
+    <div class="card">
+      <div class="section-label">Ciclo Autónomo</div>
+      <ol style="padding-left: 1.2rem; color: var(--muted); font-size: 0.87rem; line-height: 2;">
+        <li>Recibe lista de <code style="color:var(--accent2)">product_ids</code></li>
+        <li>Sanitiza y valida cada ID</li>
+        <li>Consulta precio en API externa</li>
+        <li>Compara con umbral objetivo</li>
+        <li>Envía alerta por email si aplica</li>
+        <li>Registra historial en memoria</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="arquitectura">
+  <div class="section-label">02 — Arquitectura C4</div>
+  <h2 class="section-title">Contexto & <span>Contenedores</span></h2>
+
+  <div class="two-col" style="margin-bottom:2rem;">
+    <div>
+      <h3 style="font-size:0.88rem; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:1rem; font-family:'DM Mono',monospace;">C4 — Contexto</h3>
+      <div class="arch-diagram">
+        <pre><span class="hl-orange">[Scheduler / Cron]</span>
+       │ trigger
+       ▼
+<span class="hl-blue">[Price Monitor Agent]</span>──HTTP──▶<span class="hl-green">[External Price API]</span>
+       │
+       ▼ SMTP
+<span class="hl-orange">[Alert Recipients]</span></pre>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size:0.88rem; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:1rem; font-family:'DM Mono',monospace;">C4 — Contenedores</h3>
+      <div class="arch-diagram">
+        <pre>┌───────────────────────────────┐
+│   <span class="hl-blue">PriceMonitorAgent</span>           │
+│                               │
+│  <span class="hl-blue">price_monitor.py</span>             │
+│      │                        │
+│  <span class="hl-green">sanitizer.py</span>                 │
+│      │                        │
+│  <span class="hl-orange">price_api.py</span> ──HTTP──▶ API  │
+│      │                        │
+│  <span class="hl-green">notifier.py</span> ──SMTP──▶ Email │
+└───────────────────────────────┘</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="arch-diagram">
+    <pre>
+src/
+├── <span class="hl-blue">agent/price_monitor.py</span>   <span class="hl-orange">← Core: PriceMonitorAgent, AlertConfig, PriceRecord</span>
+├── <span class="hl-green">api/price_api.py</span>         <span class="hl-orange">← HTTP client + retry strategy + Bearer auth</span>
+└── utils/
+    ├── <span class="hl-green">sanitizer.py</span>         <span class="hl-orange">← Input validation (regex + type coercion)</span>
+    └── <span class="hl-orange">notifier.py</span>          <span class="hl-orange">← SMTP alert sender (starttls)</span></pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="calidad">
+  <div class="section-label">03 — Requisitos de Calidad</div>
+  <h2 class="section-title">Rendimiento · Seguridad · <span>Mantenibilidad</span></h2>
+
+  <div class="quality-grid">
+    <div class="card quality-card q-perf">
+      <div class="quality-icon">🚀</div>
+      <h3>Rendimiento</h3>
+      <ul>
+        <li>Latencia p95 ≤ 500ms por producto</li>
+        <li>Reintentos automáticos 3x con backoff 0.5s</li>
+        <li>Timeout configurable (default 10s)</li>
+        <li>Sesión HTTP persistente con pooling</li>
+        <li>Status codes 429/5xx en whitelist de retry</li>
+      </ul>
+    </div>
+    <div class="card quality-card q-sec">
+      <div class="quality-icon">🔒</div>
+      <h3>Seguridad</h3>
+      <ul>
+        <li>Zero secrets en código — solo env vars</li>
+        <li>Input sanitization con regex estricta</li>
+        <li>Non-root container (UID 1000)</li>
+        <li>Snyk SCA + SAST en cada PR</li>
+        <li>TLS forzado (SMTP starttls + HTTPS)</li>
+      </ul>
+    </div>
+    <div class="card quality-card q-maint">
+      <div class="quality-icon">🔧</div>
+      <h3>Mantenibilidad</h3>
+      <ul>
+        <li>Cobertura de tests ≥ 80% (enforced en CI)</li>
+        <li>Arquitectura modular de 3 capas</li>
+        <li>Tipado estático con mypy</li>
+        <li>Ruff + Black para code style</li>
+        <li>Logging estructurado con niveles</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="codigo">
+  <div class="section-label">04 — Implementación Segura</div>
+  <h2 class="section-title">Código <span>Modular</span></h2>
+
+  <div class="file-tree" style="margin-bottom:2rem;">
+    <div><span class="ft-dir">price-monitor-agent/</span></div>
+    <div>&nbsp;&nbsp;├── <span class="ft-dir">src/</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ft-dir">agent/</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ft-py">price_monitor.py</span> <span class="ft-comment"># Core agent logic</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ft-dir">api/</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ft-py">price_api.py</span> <span class="ft-comment"># HTTP client + retry</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ft-dir">utils/</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="ft-py">sanitizer.py</span> <span class="ft-comment"># Input validation</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ft-py">notifier.py</span> <span class="ft-comment"># SMTP alerts</span></div>
+    <div>&nbsp;&nbsp;├── <span class="ft-dir">tests/</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ft-py">test_sanitizer.py</span> <span class="ft-comment"># 14 unit tests</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ft-py">test_price_monitor.py</span> <span class="ft-comment"># 12 unit tests</span></div>
+    <div>&nbsp;&nbsp;├── <span class="ft-dir">configs/</span></div>
+    <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ft-yml">ci-cd.yml</span> <span class="ft-comment"># GitHub Actions 5-stage pipeline</span></div>
+    <div>&nbsp;&nbsp;├── <span class="ft-cfg">Dockerfile</span> <span class="ft-comment"># Multi-stage, non-root UID 1000</span></div>
+    <div>&nbsp;&nbsp;├── <span class="ft-cfg">.env.example</span> <span class="ft-comment"># Variable template</span></div>
+    <div>&nbsp;&nbsp;├── <span class="ft-cfg">pyproject.toml</span> <span class="ft-comment"># pytest + ruff + black</span></div>
+    <div>&nbsp;&nbsp;└── <span class="ft-md">README.md</span></div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+      <span class="code-filename">src/agent/price_monitor.py</span>
+    </div>
+    <pre><span class="cm"># Core agent — modular, typed, testable</span>
+<span class="kw">class</span> <span class="cl">PriceMonitorAgent</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, api_client: Optional[<span class="cl">PriceAPIClient</span>] = <span class="kw">None</span>):
+        self.api_client = api_client <span class="kw">or</span> <span class="cl">PriceAPIClient</span>()
+        self.history: list[<span class="cl">PriceRecord</span>] = []
+
+    <span class="kw">def</span> <span class="fn">fetch_price</span>(self, product_id: str) -> <span class="cl">PriceRecord</span>:
+        <span class="cm"># 1. Sanitize input — prevent injection</span>
+        safe_id = <span class="fn">sanitize_product_id</span>(product_id)
+        <span class="kw">if not</span> safe_id:
+            <span class="kw">raise</span> <span class="cl">ValueError</span>(<span class="st">f"Invalid product_id: {product_id!r}"</span>)
+
+        <span class="cm"># 2. Call external API</span>
+        raw = self.api_client.<span class="fn">get_price</span>(safe_id)
+
+        <span class="cm"># 3. Validate & normalize price</span>
+        price = <span class="fn">sanitize_price</span>(raw.get(<span class="st">"price"</span>))
+        <span class="kw">return</span> <span class="cl">PriceRecord</span>(product_id=safe_id, current_price=price, ...)
+
+    <span class="kw">def</span> <span class="fn">evaluate_alerts</span>(self, record: <span class="cl">PriceRecord</span>) -> bool:
+        config = self._alert_configs.get(record.product_id)
+        threshold = config.target_price * (<span class="nu">1</span> + config.tolerance_pct)
+        <span class="kw">if</span> record.current_price &lt;= threshold:
+            <span class="fn">send_alert</span>(to=config.alert_email, ...)  <span class="cm"># 📧 fire!</span>
+            <span class="kw">return True</span>
+        <span class="kw">return False</span></pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="pipeline">
+  <div class="section-label">05 — CI/CD Automation Pipeline</div>
+  <h2 class="section-title">Pipeline de <span>5 Etapas</span></h2>
+
+  <div class="pipeline" style="margin-bottom: 2rem;">
+    <div class="pipe-step" id="step-lint">
+      <div class="pipe-icon">🔍</div>
+      <div class="pipe-name">Lint</div>
+      <div class="pipe-detail">Ruff + Black<br>+ Mypy</div>
+    </div>
+    <div class="pipe-step" id="step-tests">
+      <div class="pipe-icon">🧪</div>
+      <div class="pipe-name">Tests</div>
+      <div class="pipe-detail">Pytest<br>Coverage ≥80%</div>
+    </div>
+    <div class="pipe-step" id="step-security">
+      <div class="pipe-icon">🔒</div>
+      <div class="pipe-name">Security</div>
+      <div class="pipe-detail">Snyk SCA<br>+ SAST</div>
+    </div>
+    <div class="pipe-step" id="step-build">
+      <div class="pipe-icon">🐳</div>
+      <div class="pipe-name">Build</div>
+      <div class="pipe-detail">Docker<br>multi-stage</div>
+    </div>
+    <div class="pipe-step" id="step-deploy">
+      <div class="pipe-icon">🚀</div>
+      <div class="pipe-name">Deploy</div>
+      <div class="pipe-detail">SSH → Staging<br>Docker run</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 1.5rem;">
+    <button class="btn-primary" id="run-pipeline-btn">Disparar Webhook GitHub Actions (Simulado)</button>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+      <span class="code-filename">configs/ci-cd.yml</span>
+    </div>
+    <pre><span class="kw">jobs</span>:
+  <span class="fn">lint</span>:
+    <span class="kw">steps</span>: [ruff check, black --check, mypy]
+
+  <span class="fn">tests</span>:
+    <span class="kw">needs</span>: lint
+    <span class="kw">steps</span>: [pytest --cov=src --cov-fail-under=<span class="nu">80</span>]
+
+  <span class="fn">security</span>:
+    <span class="kw">needs</span>: lint
+    <span class="kw">steps</span>: [snyk test --severity-threshold=high,
+            snyk code test]
+
+  <span class="fn">build</span>:
+    <span class="kw">needs</span>: [tests, security]
+    <span class="kw">if</span>: github.ref == <span class="st">'refs/heads/develop'</span>
+    <span class="kw">steps</span>: [docker build-push :staging, :$SHA]
+
+  <span class="fn">deploy-staging</span>:
+    <span class="kw">environment</span>: staging
+    <span class="kw">steps</span>: [SSH → docker pull && docker run]</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="despliegue">
+  <div class="section-label">06 — Staging</div>
+  <h2 class="section-title">Despliegue en <span>Staging</span></h2>
+
+  <div class="two-col" style="margin-bottom:3rem;">
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+        <span class="code-filename">Opción A — Docker (recomendado)</span>
+      </div>
+      <pre><span class="cm"># Pull imagen de staging</span>
+docker pull org/price-monitor-agent:staging
+
+<span class="cm"># Correr con env vars</span>
+docker run -d \
+  --name price-monitor-agent \
+  --restart unless-stopped \
+  -e <span class="dc">PRICE_API_KEY</span>=<span class="st">"&lt;key&gt;"</span> \
+  -e <span class="dc">SMTP_HOST</span>=<span class="st">"smtp.mailgun.org"</span> \
+  -e <span class="dc">SMTP_USER</span>=<span class="st">"&lt;user&gt;"</span> \
+  -e <span class="dc">SMTP_PASS</span>=<span class="st">"&lt;pass&gt;"</span> \
+  org/price-monitor-agent:staging
+
+<span class="cm"># Health check</span>
+docker inspect \
+  --format='正常' \
+  price-monitor-agent</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div>
+        <span class="code-filename">Opción B — Local dev</span>
+      </div>
+      <pre><span class="cm"># 1. Clonar y configurar</span>
+git clone github.com/org/price-monitor-agent
+cd price-monitor-agent
+
+<span class="cm"># 2. Entorno virtual</span>
+python -m venv .venv
+source .venv/bin/activate
+
+<span class="cm"># 3. Instalar deps</span>
+pip install -r requirements.txt
+
+<span class="cm"># 4. Variables de entorno</span>
+cp .env.example .env
+<span class="cm"># → editar .env con valores reales</span>
+
+<span class="cm"># 5. Ejecutar tests</span>
+pytest tests/ --cov=src -v
+
+<span class="cm"># 6. Correr agente</span>
+python -m src.main</pre>
+    </div>
+  </div>
+
+  <h3 style="font-size:0.88rem; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:1.5rem; font-family:'DM Mono',monospace;">GitHub Secrets Requeridos</h3>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Secret</th>
+          <th>Descripción</th>
+          <th>Requerido</th>
+          <th>Estado Mock</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>PRICE_API_KEY</td><td>API Key del servicio de precios externo</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>PRICE_API_KEY_TEST</td><td>API Key para entorno de tests en CI</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>SNYK_TOKEN</td><td>Token de autenticación Snyk</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>DOCKER_USERNAME</td><td>Usuario Docker Hub</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>DOCKER_TOKEN</td><td>Token de acceso Docker Hub</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>STAGING_HOST</td><td>IP/hostname del servidor staging</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>STAGING_USER</td><td>Usuario SSH servidor staging</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>STAGING_SSH_KEY</td><td>Clave privada SSH (PEM)</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+        <tr><td>SMTP_HOST / SMTP_USER / SMTP_PASS</td><td>Credenciales SMTP alertas</td><td>✅</td><td><span class="status-badge badge-success">SET</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <p>Price Monitor Agent · Diseñado por un <strong>Senior Fullstack Engineer & DevSecOps</strong></p>
+  <p style="margin-top:0.5rem; color:#2a3a55; font-size:0.75rem;">
+    Python 3.11 · Pytest · GitHub Actions · Snyk · Docker · MIT License
+  </p>
+</footer>
+
+</div><script>
+document.addEventListener('DOMContentLoaded', () => {
+  const runAgentBtn = document.getElementById('run-agent-btn');
+  const runPipelineBtn = document.getElementById('run-pipeline-btn');
+  const terminal = document.getElementById('terminal-logs');
+
+  // Nodos de flujo visual
+  const flowEntry = document.getElementById('flow-entry');
+  const flowLogic = document.getElementById('flow-logic');
+  const flowApi = document.getElementById('flow-api');
+  const flowOut = document.getElementById('flow-out');
+
+  function appendLog(type, text) {
+    const el = document.createElement('div');
+    let badge = '';
+    if (type === 'info') badge = '<span class="term-info">[INFO]</span> ';
+    if (type === 'success') badge = '<span class="term-success">[SUCCESS]</span> ';
+    if (type === 'warn') badge = '<span class="term-warn">[WARN]</span> ';
+    if (type === 'danger') badge = '<span class="term-danger">[ALERT]</span> ';
+    
+    el.innerHTML = `${badge}${text}`;
+    terminal.appendChild(el);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  function resetFlowHighlights() {
+    [flowEntry, flowLogic, flowApi, flowOut].forEach(el => {
+      el.style.background = 'var(--surface2)';
+      el.style.boxShadow = 'none';
+    });
+  }
+
+  function highlightFlow(element, color) {
+    element.style.background = 'rgba(100, 180, 255, 0.05)';
+    element.style.boxShadow = `0 0 15px ${color}`;
+  }
+
+  // --- LÓGICA DEL AGENTE ---
+  runAgentBtn.addEventListener('click', async () => {
+    runAgentBtn.disabled = true;
+    resetFlowHighlights();
+    
+    const prodId = document.getElementById('prod-id').value;
+    const targetPrice = parseFloat(document.getElementById('prod-target').value);
+    const email = document.getElementById('prod-email').value;
+
+    appendLog('info', `Iniciando ciclo para el ID de entrada: "${prodId}"`);
+    highlightFlow(flowEntry, 'var(--accent)');
+
+    // 1. Sanitización Simulada (Python regex matching)
+    await new Promise(r => setTimeout(r, 600));
+    // Expresión regular limpia: solo letras, números y guiones
+    const safeIdRegex = /^[A-Z0-9\-]+$/i; 
+    
+    if (!safeIdRegex.test(prodId) || prodId.trim() === "") {
+      appendLog('danger', `CRITICAL SANITIZATION ERROR: El ID "${prodId}" contiene caracteres inválidos (Posible inyección SQL/Command). Abortando.`);
+      runAgentBtn.disabled = false;
+      return;
+    }
+
+    const cleanId = prodId.toUpperCase();
+    appendLog('success', `Sanitizer: ID verificado de forma segura -> "${cleanId}"`);
+    highlightFlow(flowLogic, 'var(--accent2)');
+
+    // 2. Consulta API externa simulada
+    await new Promise(r => setTimeout(r, 800));
+    highlightFlow(flowApi, 'var(--accent2)');
+    // Simular un precio aleatorio que oscile cerca de lo que busca el usuario
+    const mockCurrentPrice = Math.floor(targetPrice * (0.8 + Math.random() * 0.4));
+    appendLog('info', `HTTP GET exitoso a pricemonitor.api/v1/prices/${cleanId}. Latencia: 142ms`);
+    appendLog('info', `API Payload obtenido: { "price": ${mockCurrentPrice}, "currency": "USD", "status": "active" }`);
+
+    // 3. Evaluación de umbrales y alertas
+    await new Promise(r => setTimeout(r, 600));
+    highlightFlow(flowOut, 'var(--accent3)');
+
+    appendLog('info', `Evaluando métricas: Precio actual ($${mockCurrentPrice}) vs Objetivo ($${targetPrice})`);
+    
+    if (mockCurrentPrice <= targetPrice) {
+      appendLog('danger', `DISPARADOR ACTIVADO: $${mockCurrentPrice} <= $${targetPrice}. Cumple con criterio de compra.`);
+      appendLog('success', `SMTP: Correo de alerta de oferta enviado con éxito a ${email} mediante TLS starttls.`);
+    } else {
+      appendLog('warn', `No se disparó alerta. El precio ($${mockCurrentPrice}) supera el objetivo ($${targetPrice}).`);
+    }
+
+    appendLog('info', 'Ciclo autónomo terminado con éxito. Duración total: 2.1s');
+    runAgentBtn.disabled = false;
+  });
+
+  // --- LÓGICA DEL PIPELINE CI/CD ---
+  const pipelineSteps = ['step-lint', 'step-tests', 'step-security', 'step-build', 'step-deploy'];
+  
+  runPipelineBtn.addEventListener('click', async () => {
+    runPipelineBtn.disabled = true;
+    
+    // Resetear estilos de pasos previos
+    pipelineSteps.forEach(id => {
+      document.getElementById(id).classList.remove('active');
+      document.getElementById(id).style.borderColor = 'var(--border)';
+    });
+
+    appendLog('info', 'GitHub Actions: Evento [push] detectado en branch \'develop\'');
+
+    for (let i = 0; i < pipelineSteps.length; i++) {
+      const stepId = pipelineSteps[i];
+      const stepEl = document.getElementById(stepId);
+      
+      stepEl.classList.add('active');
+      stepEl.style.borderColor = 'var(--warn)';
+      
+      if (stepId === 'step-lint') {
+        appendLog('info', 'Ejecutando Stage: Linting (Ruff + Black + Mypy)...');
+        await new Promise(r => setTimeout(r, 1000));
+        appendLog('success', 'Linting aprobado. 0 errores de sintaxis, tipos estáticos consistentes.');
+      } 
+      else if (stepId === 'step-tests') {
+        appendLog('info', 'Ejecutando Stage: Unit & Integration Testing (Pytest)...');
+        await new Promise(r => setTimeout(r, 1200));
+        appendLog('success', 'Pytest exitoso: 26/26 tests pasados. Cobertura de código al 88.4% (Mínimo requerido ≥80%)');
+      } 
+      else if (stepId === 'step-security') {
+        appendLog('info', 'Ejecutando Stage: SecOps Hardening (Snyk Code SAST)...');
+        await new Promise(r => setTimeout(r, 1000));
+        appendLog('success', 'Snyk Scan: 0 vulnerabilidades críticas detectadas en dependencias externas.');
+      } 
+      else if (stepId === 'step-build') {
+        appendLog('info', 'Ejecutando Stage: Docker Multi-stage Artifact Build...');
+        await new Promise(r => setTimeout(r, 1100));
+        appendLog('success', 'Imagen creada de forma segura: price-monitor-agent:staging (Non-root user UID 1000 asignado)');
+      } 
+      else if (stepId === 'step-deploy') {
+        appendLog('info', 'Ejecutando Stage: Continuous Deployment a servidor Staging mediante SSH...');
+        await new Promise(r => setTimeout(r, 900));
+        appendLog('success', 'Contenedor actualizado y corriendo en entorno remoto de Staging. Health check: [OK]');
+      }
+
+      stepEl.style.borderColor = 'var(--accent2)';
+    }
+
+    appendLog('success', '¡Pipeline completado al 100%! El software es estable y seguro.');
+    runPipelineBtn.disabled = false;
+  });
+});
+</script>
+</body>
+</html>
